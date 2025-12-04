@@ -1,25 +1,23 @@
 import { v4 as uuidv4 } from 'uuid';
-
+import jwt from 'jsonwebtoken';
+const ACCESS_SECRET = process.env.JWT_SECRET;
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+// Fail fast if env variables missing
+if (!ACCESS_SECRET || !REFRESH_SECRET) {
+    throw new Error('JWT secrets are not defined in environment variables');
+}
 export const generateAccessToken = (user) => {
-  return jwt.sign(
-    {
-      id: user.user_id,
-      email: user.email,
-      role: user.role_id,
-      jti: uuidv4() // unique per token
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
+    return jwt.sign({
+        id: user.user_id,
+        email: user.email,
+        role: user.role_id,
+        jti: uuidv4(), // unique per token
+    }, ACCESS_SECRET, { expiresIn: '15m' });
 };
-
 export const generateRefreshToken = (user) => {
-  return jwt.sign(
-    {
-      id: user.user_id,
-      jti: uuidv4()
-    },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
+    return jwt.sign({
+        id: user.user_id,
+        jti: uuidv4(),
+    }, REFRESH_SECRET, { expiresIn: '7d' });
 };
+//# sourceMappingURL=generateToken.js.map
