@@ -1,7 +1,7 @@
 // src/Services/loginServices.ts
 import { findUserByEmail, getRoleByUserId } from "../models/userModel.js";
 import { comparepassword } from "../utils/comparepassword.js";
-import {
+import {  
   generateAccessToken,
   generateRefreshToken,
 } from "../utils/generateToken.js";
@@ -40,7 +40,7 @@ export const loginUserService = async (
     throw new HttpError(401, "Invalid email or password");
   }
  const isPasswordValid = await comparepassword(password, user.password_hash);
-;
+
   console.log("🔑 Password valid:", isPasswordValid);
 
   if (!isPasswordValid) {

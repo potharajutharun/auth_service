@@ -16,4 +16,9 @@ export interface Role extends RowDataPacket {
 export declare const findUserByEmail: (email: string) => Promise<User | null>;
 export declare const findUserById: (id: number) => Promise<User | null>;
 export declare const getRoleByUserId: (user_id: number) => Promise<Role | null>;
+export declare const createUser: (email: string, password_hash: string) => Promise<import("mysql2").QueryResult>;
+export declare const deleteOldResetTokens: (userId: number) => Promise<void>;
+export declare const saveResetToken: (userId: number, token: string, expiresAt: Date) => Promise<import("mysql2").QueryResult>;
+export declare const findValidResetToken: (token: string) => Promise<any>;
+export declare const updateUserPasswordById: (userId: number | string, passwordHash: string) => Promise<any>;
 //# sourceMappingURL=userModel.d.ts.map

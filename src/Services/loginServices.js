@@ -16,7 +16,6 @@ export const loginUserService = async (email, password) => {
         throw new HttpError(401, "Invalid email or password");
     }
     const isPasswordValid = await comparepassword(password, user.password_hash);
-    ;
     console.log("🔑 Password valid:", isPasswordValid);
     if (!isPasswordValid) {
         throw new HttpError(401, "Invalid email or password");
