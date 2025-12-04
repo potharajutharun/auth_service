@@ -1,10 +1,1 @@
-{
-  "version": 3,
-  "file": "loginController.d.ts",
-  "sourceRoot": "",
-  "sources": [
-    "loginController.ts"
-  ],
-  "names": [],
-  "mappings": "AAAA,OAAO,KAAK,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAGjD,UAAU,gBAAgB;IACxB,KAAK,EAAE,MAAM,CAAC;IACd,QAAQ,EAAE,MAAM,CAAC;CAClB;AAED,eAAO,MAAM,eAAe,GAC1B,KAAK,OAAO,CAAC,EAAE,EAAE,EAAE,EAAE,gBAAgB,CAAC,EACtC,KAAK,QAAQ,KACZ,OAAO,CAAC,QAAQ,CAkClB,CAAC"
-}
+{"version":3,"file":"loginController.d.ts","sourceRoot":"","sources":["loginController.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAKjD,UAAU,gBAAgB;IACxB,KAAK,EAAE,MAAM,CAAC;IACd,QAAQ,EAAE,MAAM,CAAC;CAClB;AAED,eAAO,MAAM,eAAe,GAC1B,KAAK,OAAO,CAAC,EAAE,EAAE,EAAE,EAAE,gBAAgB,CAAC,EACtC,KAAK,QAAQ,KACZ,OAAO,CAAC,QAAQ,CAyClB,CAAC"}

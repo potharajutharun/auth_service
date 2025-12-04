@@ -1,7 +1,8 @@
 interface AuthUser {
-    id: string;
+    user_id: number;
     email: string;
-    role_id: string;
+    role_id: number;
+    role_key?: string;
 }
 interface LoginResult {
     user: AuthUser;

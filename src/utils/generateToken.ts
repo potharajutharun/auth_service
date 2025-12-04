@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 interface User {
   user_id: number;
   email: string;
-  role_id: string;
+  role_id: number;
 }
 
 const ACCESS_SECRET = process.env.JWT_SECRET;

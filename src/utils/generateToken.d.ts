@@ -1,7 +1,7 @@
 interface User {
-    user_id: string;
+    user_id: number;
     email: string;
-    role_id: string;
+    role_id: number;
 }
 export declare const generateAccessToken: (user: User) => string;
 export declare const generateRefreshToken: (user: User) => string;
