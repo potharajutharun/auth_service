@@ -21,4 +21,5 @@ export declare const deleteOldResetTokens: (userId: number) => Promise<void>;
 export declare const saveResetToken: (userId: number, token: string, expiresAt: Date) => Promise<import("mysql2").QueryResult>;
 export declare const findValidResetToken: (token: string) => Promise<any>;
 export declare const updateUserPasswordById: (userId: number | string, passwordHash: string) => Promise<any>;
+export declare const GetAllusers: () => Promise<any>;
 //# sourceMappingURL=userModel.d.ts.map

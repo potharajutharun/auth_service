@@ -54,4 +54,8 @@ export const updateUserPasswordById = async (userId, passwordHash) => {
     const [result] = await db.query("UPDATE users SET password_hash = ? WHERE user_id = ?", [passwordHash, userId]);
     return result; // mysql2 ResultSetHeader
 };
+export const GetAllusers = async () => {
+    const [result] = await db.query('select * from users');
+    return result;
+};
 //# sourceMappingURL=userModel.js.map

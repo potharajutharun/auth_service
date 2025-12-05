@@ -114,3 +114,8 @@ export const updateUserPasswordById = async (
   );
   return result as any; // mysql2 ResultSetHeader
 };
+
+ export const GetAllusers=async()=>{
+  const [result]=await db.query('select * from users');
+  return result as any;
+ }

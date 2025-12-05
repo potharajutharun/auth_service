@@ -5,9 +5,9 @@ import { forgotpasswordController } from "../controllers/forgotpasswordControlle
 import { resetPasswordController } from "../controllers/resetPasswordController.js";
 const router = express.Router();
 //  console.log('Setting up /login route');
-router.post("/login", loginController);
-router.post("/register", registerController);
-router.post("/forgotpassword", forgotpasswordController);
-router.post("/resetpassword", resetPasswordController);
+router.post("/auth/login", loginController);
+router.post("/auth/register", registerController);
+router.post("/auth/forgotpassword", forgotpasswordController);
+router.post("/auth/resetpassword", resetPasswordController);
 export default router;
 //# sourceMappingURL=authRoutes.js.map

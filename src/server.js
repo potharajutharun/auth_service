@@ -3,6 +3,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import userRouters from "./routes/userRoutes.js";
 import { db } from "./config/db.js";
 // ----------------------------------------------------------------
 // CORS CONFIG
@@ -39,8 +40,9 @@ app.use(express.json());
 app.get("/", (_req, res) => {
     res.json({ status: "ok", message: "Auth service running" });
 });
-// Routes
-app.use("/api/v1/auth", authRoutes);
+// Route
+app.use("/api/v1", authRoutes);
+app.use("/api/v1", userRouters);
 // Global error handler
 app.use((err, _req, res, _next) => {
     console.error("[ERROR]", err);
