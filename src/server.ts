@@ -4,6 +4,8 @@ import { createApp } from "./app";
 
 const app = createApp();
 
-app.listen(env.port, () => {
-  console.log(`🚀 Auth server running on port ${env.port}`);
+app.listen(env.app.port, () => {
+  console.log(
+    `Auth server running on port ${env.app.port} (${env.app.nodeEnv})`
+  );
 });

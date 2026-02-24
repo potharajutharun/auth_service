@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { authController } from "../../controllers/auth.controller";
 import { validateRequest } from "../../middleware/validateRequest";
-import { registerSchema, loginSchema } from "./auth.dto";
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "./auth.dto";
 import { authenticate } from "../../middleware/authenticate";
 import { authLimiter } from "../../middleware/rateLimiter";
 
@@ -26,6 +31,20 @@ router.post(
 );
 router.post("/refreshtoken", authController.refresh);
 router.post("/logout", authLimiter, authController.logout);
+router.post(
+  "/forgotpassword",
+  authLimiter,
+  validateRequest(forgotPasswordSchema),
+  authController.forgotPassword
+);
+router.post(
+  "/resetpassword",
+  authLimiter,
+  validateRequest(resetPasswordSchema),
+  authController.resetPassword
+);
+router.post("/verify-email", authLimiter, authController.verifyEmail);
+router.get("/verify-email", authLimiter, authController.verifyEmail);
 router.get("/me", authenticate, authController.me);
 
 router.get("/google", authLimiter, redirectToGoogle);

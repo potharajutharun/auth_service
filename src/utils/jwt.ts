@@ -7,6 +7,12 @@ export interface JwtBasePayload {
   role: string;
 }
 
+export interface PasswordResetPayload {
+  sub: number;
+  email: string;
+  purpose: "password_reset";
+}
+
 const accessSecret: Secret = env.jwt.accessSecret;
 const refreshSecret: Secret = env.jwt.refreshSecret;
 
@@ -31,5 +37,27 @@ export const jwtUtils = {
 
   verifyRefreshToken(token: string): JwtBasePayload & JwtPayload {
     return jwt.verify(token, refreshSecret) as JwtBasePayload & JwtPayload;
+  },
+
+  signPasswordResetToken(payload: {
+    sub: number;
+    email: string;
+  }): string {
+    const options: SignOptions = {
+      expiresIn: `${env.security.resetPasswordTtlMinutes}m`
+    };
+    const tokenPayload: PasswordResetPayload = {
+      ...payload,
+      purpose: "password_reset",
+    };
+    return jwt.sign(tokenPayload, accessSecret, options);
+  },
+
+  verifyPasswordResetToken(token: string): PasswordResetPayload & JwtPayload {
+    const payload = jwt.verify(token, accessSecret) as PasswordResetPayload & JwtPayload;
+    if (payload.purpose !== "password_reset") {
+      throw new Error("INVALID_RESET_PURPOSE");
+    }
+    return payload;
   }
 };

@@ -162,4 +162,43 @@ export const mailService = {
 
     await this.sendEmail({ to: email, subject, html, text });
   },
+
+  async sendPasswordResetEmail(email: string, token: string): Promise<void> {
+    const resetLink = `${
+      env.app.frontendUrl
+    }/auth/resetpassword?token=${encodeURIComponent(token)}`;
+
+    const subject = "Reset your password";
+    const text = `Use this link to reset your password: ${resetLink}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; background:#f4f4f4; padding:20px;">
+        <table width="100%" cellpadding="0" cellspacing="0"
+          style="max-width:650px; margin:auto; background:#ffffff; border-radius:8px; overflow:hidden;">
+          <tr>
+            <td style="padding:30px; font-size:15px; color:#333; line-height:1.6;">
+              <p>Hi,</p>
+              <p>We received a request to reset your password.</p>
+              <p style="text-align:center; margin:30px 0;">
+                <a href="${resetLink}"
+                  style="background:#007bff; color:#ffffff; padding:14px 26px;
+                         border-radius:6px; text-decoration:none; font-size:16px; font-weight:bold;">
+                  Reset Password
+                </a>
+              </p>
+              <p>If the button does not work, copy this URL:</p>
+              <p style="word-break:break-all; color:#007bff;">${resetLink}</p>
+              <p>This reset link is valid for ${env.security.resetPasswordTtlMinutes} minutes.</p>
+              <p>If you did not request this change, you can ignore this email.</p>
+              <p style="margin-top:25px;">
+                Regards,<br>
+                Pensoic.com Team
+              </p>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    await this.sendEmail({ to: email, subject, html, text });
+  },
 };

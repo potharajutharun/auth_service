@@ -6,6 +6,14 @@ import { env } from "../config/env";
 import { passwordUtils } from "../utils/password";
 import { emailverification } from "./emailverification";
 import { mailService } from "./mail.service";
+import { emailverification_repository } from "../repositories/emailverify_repository";
+
+const isActiveUser = (user: { status_id?: string; status_name?: string | null }) => {
+  if (user.status_name) {
+    return user.status_name.toLowerCase() === "active";
+  }
+  return user.status_id === "1";
+};
 
 const buildRefreshExpiryDate = () => {
   const now = Date.now();
@@ -14,9 +22,9 @@ const buildRefreshExpiryDate = () => {
 };
 
 interface RegisterInput {
-  name: string;
   email: string;
   password: string;
+  tenant_id: number;
 }
 
 interface LoginInput {
@@ -24,13 +32,21 @@ interface LoginInput {
   password: string;
 }
 
+interface ForgotPasswordInput {
+  email: string;
+}
+
+interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
 export const authService = {
-  async register({ email, password }: RegisterInput) {
+  async register({ email, password, tenant_id }: RegisterInput) {
     const existing = await userRepository.findByEmail(email);
     if (existing) throw new Error("EMAIL_EXISTS");
 
-    // default role = 'user'
-    const role = await roleRepository.findByName("user");
+    const role = await roleRepository.findByName("User", tenant_id);
     if (!role) {
       throw new Error("ROLE_USER_MISSING");
     }
@@ -40,11 +56,11 @@ export const authService = {
     const user = await userRepository.createUser({
       email,
       password: hashed,
+      tenant_id,
       roleId: role.id,
     });
     const verificationToken = await emailverification(user.id);
-    console.log(verificationToken);
-    const resp = await mailService.sendEmailVerification(
+    await mailService.sendEmailVerification(
       user.email,
       verificationToken
     );
@@ -52,27 +68,27 @@ export const authService = {
     const accessToken = jwtUtils.signAccessToken({
       sub: user.id,
       email: user.email,
-      role: "user",
+      role: role.name,
     });
 
     const refreshToken = jwtUtils.signRefreshToken({
       sub: user.id,
       email: user.email,
-      role: "user",
+      role: role.name,
     });
 
     await refreshTokenRepository.create(
       user.id,
       refreshToken,
+      user.tenant_id,
       buildRefreshExpiryDate()
     );
-    
 
     return {
       user: {
         id: user.id,
         email: user.email,
-        role: "user",
+        role: role.name,
       },
       accessToken,
       refreshToken,
@@ -80,34 +96,37 @@ export const authService = {
   },
 
   async login({ email, password }: LoginInput) {
-    console.log(email, password);
     const user = await userRepository.findByEmail(email);
-    console.log(user, "lll");
     if (!user) throw new Error("INVALID");
 
-    if (user.status !== "active") {
+    if (!isActiveUser(user)) {
       throw new Error("USER_INACTIVE");
     }
 
-    const ok = await passwordUtils.compare(password, user.password!);
-    console.log(ok, "ppp");
+    if (!user.password) {
+      throw new Error("INVALID");
+    }
+
+    const ok = await passwordUtils.compare(password, user.password);
     if (!ok) throw new Error("INVALID");
+    const resolvedRole = user.role_name ?? "User";
 
     const accessToken = jwtUtils.signAccessToken({
       sub: user.id,
       email: user.email,
-      role: user.role_name,
+      role: resolvedRole,
     });
 
     const refreshToken = jwtUtils.signRefreshToken({
       sub: user.id,
       email: user.email,
-      role: user.role_name,
+      role: resolvedRole,
     });
 
     await refreshTokenRepository.create(
       user.id,
       refreshToken,
+      user.tenant_id,
       buildRefreshExpiryDate()
     );
 
@@ -116,12 +135,53 @@ export const authService = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role_name,
-        status: user.status,
+        role: resolvedRole,
+        status: user.status_name ?? user.status_id,
       },
       accessToken,
       refreshToken,
     };
+  },
+
+  async forgotPassword({ email }: ForgotPasswordInput) {
+    const user = await userRepository.findByEmail(email);
+
+    // Return success even for unknown emails to avoid account enumeration.
+    if (!user) {
+      return;
+    }
+
+    const resetToken = jwtUtils.signPasswordResetToken({
+      sub: user.id,
+      email: user.email,
+    });
+
+    await mailService.sendPasswordResetEmail(user.email, resetToken);
+  },
+
+  async resetPassword({ token, newPassword }: ResetPasswordInput) {
+    let payload;
+    try {
+      payload = jwtUtils.verifyPasswordResetToken(token);
+    } catch (err: any) {
+      if (err?.name === "TokenExpiredError") {
+        throw new Error("RESET_TOKEN_EXPIRED");
+      }
+      throw new Error("RESET_TOKEN_INVALID");
+    }
+
+    const user = await userRepository.findById(payload.sub);
+    if (!user || user.email !== payload.email) {
+      throw new Error("RESET_TOKEN_INVALID");
+    }
+
+    const hashed = await passwordUtils.hash(newPassword);
+    const updated = await userRepository.updatePasswordById(user.id, hashed);
+    if (!updated) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    await refreshTokenRepository.revokeAllForUser(user.id);
   },
 
   async refreshTokens(refreshToken: string) {
@@ -141,10 +201,11 @@ export const authService = {
     }
 
     const user = await userRepository.findById(payload.sub);
-    if (!user || user.status !== "active") {
+    if (!user || !isActiveUser(user)) {
       await refreshTokenRepository.revokeById(stored.id);
       throw new Error("USER_INACTIVE");
     }
+    const resolvedRole = user.role_name ?? "User";
 
     // Rotate
     await refreshTokenRepository.revokeById(stored.id);
@@ -152,18 +213,19 @@ export const authService = {
     const newAccessToken = jwtUtils.signAccessToken({
       sub: user.id,
       email: user.email,
-      role: user.role_name,
+      role: resolvedRole,
     });
 
     const newRefreshToken = jwtUtils.signRefreshToken({
       sub: user.id,
       email: user.email,
-      role: user.role_name,
+      role: resolvedRole,
     });
 
     await refreshTokenRepository.create(
       user.id,
       newRefreshToken,
+      user.tenant_id,
       buildRefreshExpiryDate()
     );
 
@@ -176,6 +238,35 @@ export const authService = {
 
   async logout(refreshToken: string) {
     await refreshTokenRepository.revokeByToken(refreshToken);
+  },
+
+  async verifyEmailToken(token: string) {
+    const verification = await emailverification_repository.findByToken(token);
+    if (!verification) {
+      throw new Error("EMAIL_VERIFICATION_INVALID");
+    }
+
+    if (verification.used_at) {
+      throw new Error("EMAIL_VERIFICATION_USED");
+    }
+
+    const expiresAt = new Date(verification.expires_at);
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+      throw new Error("EMAIL_VERIFICATION_EXPIRED");
+    }
+
+    const markedUsed = await emailverification_repository.markTokenUsedByToken(
+      token,
+      new Date()
+    );
+    if (!markedUsed) {
+      throw new Error("EMAIL_VERIFICATION_USED");
+    }
+
+    const updatedUser = await userRepository.markEmailVerified(verification.user_id);
+    if (!updatedUser) {
+      throw new Error("USER_NOT_FOUND");
+    }
   },
 
   async me(id: number) {

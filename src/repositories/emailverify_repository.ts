@@ -7,6 +7,11 @@ export interface EmailVerificationType {
   used_at: Date | string | null;
 }
 
+export interface EmailVerificationRecord extends EmailVerificationType {
+  id: number;
+  created_at: Date | string;
+}
+
 export const emailverification_repository = {
   async create({ user_id, token, expires_at, used_at }: EmailVerificationType) {
     const [result]: any = await db.query(
@@ -36,8 +41,22 @@ export const emailverification_repository = {
     return result.affectedRows || 0;
   },
 
-  async findByToken(token: string) {
-    const [rows]: any = await db.query(
+  async markTokenUsedByToken(token: string, used_at: Date | string) {
+    const [result]: any = await db.query(
+      `
+      UPDATE email_verifications
+      SET used_at = ?
+      WHERE token = ?
+        AND used_at IS NULL
+      `,
+      [used_at, token]
+    );
+
+    return result.affectedRows || 0;
+  },
+
+  async findByToken(token: string): Promise<EmailVerificationRecord | null> {
+    const [rows] = await db.query(
       `
       SELECT *
       FROM email_verifications
@@ -47,6 +66,7 @@ export const emailverification_repository = {
       [token]
     );
 
-    return rows.length ? rows[0] : null;
+    const parsed = rows as EmailVerificationRecord[];
+    return parsed.length ? parsed[0] : null;
   }
 };

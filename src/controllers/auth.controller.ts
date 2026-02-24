@@ -84,6 +84,35 @@ export const authController = {
     }
   },
 
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      await authService.forgotPassword(req.body);
+      return res.status(200).json({
+        message: "If the email exists, a password reset link has been sent",
+      });
+    } catch (err) {
+      return next(err);
+    }
+  },
+
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      await authService.resetPassword(req.body);
+      return res.status(200).json({ message: "Password reset successful" });
+    } catch (err: any) {
+      if (err.message === "RESET_TOKEN_INVALID") {
+        return res.status(400).json({ message: "Invalid reset token" });
+      }
+      if (err.message === "RESET_TOKEN_EXPIRED") {
+        return res.status(410).json({ message: "Reset token expired" });
+      }
+      if (err.message === "USER_NOT_FOUND") {
+        return res.status(404).json({ message: "User not found" });
+      }
+      return next(err);
+    }
+  },
+
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = req.body;
@@ -109,7 +138,7 @@ export const authController = {
     try {
       // req.user is set by authenticate() middleware
       const userFromReq = (req as Request & { user?: JwtUser }).user;
-      console.log(userFromReq,'kkla')
+      console.log(userFromReq, "kkla");
 
       if (!userFromReq) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -124,6 +153,35 @@ export const authController = {
 
       return res.status(200).json(profile);
     } catch (err) {
+      return next(err);
+    }
+  },
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const token =
+        (typeof req.body?.token === "string" ? req.body.token : undefined) ??
+        (typeof req.query?.token === "string" ? req.query.token : undefined);
+
+      if (!token) {
+        return res.status(400).json({ message: "token is required" });
+      }
+
+      await authService.verifyEmailToken(token);
+      return res.status(200).json({ message: "Email verified successfully" });
+    } catch (err: any) {
+      if (err.message === "EMAIL_VERIFICATION_INVALID") {
+        return res.status(400).json({ message: "Invalid verification link" });
+      }
+      if (err.message === "EMAIL_VERIFICATION_EXPIRED") {
+        return res.status(410).json({ message: "Verification link expired" });
+      }
+      if (err.message === "EMAIL_VERIFICATION_USED") {
+        return res.status(409).json({ message: "Verification link already used" });
+      }
+      if (err.message === "USER_NOT_FOUND") {
+        return res.status(404).json({ message: "User not found" });
+      }
       return next(err);
     }
   },

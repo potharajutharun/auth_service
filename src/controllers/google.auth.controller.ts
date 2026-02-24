@@ -1,4 +1,3 @@
-// src/controllers/googleAuth.controller.ts
 import type { Request, Response } from "express";
 import crypto from "crypto";
 
@@ -11,25 +10,57 @@ import { googleUserSchema } from "../domain/auth/auth.dto";
 import { userRepository } from "../repositories/user.repository";
 import { jwtUtils, JwtBasePayload } from "../utils/jwt";
 import { passwordUtils } from "../utils/password";
+import { roleRepository } from "../repositories/role.repository";
+import { refreshTokenRepository } from "../repositories/refreshToken.repository";
 
-// adjust based on your roles/status tables
-const DEFAULT_USER_ROLE_ID = 2; // e.g. "user"
-const STATUS_ACTIVE_NAME = "active";
+const isActiveUser = (user: { status_id?: string; status_name?: string | null }) => {
+  if (user.status_name) {
+    return user.status_name.toLowerCase() === "active";
+  }
+  return user.status_id === "1";
+};
+
+const parseTenantId = (value: unknown): number | null => {
+  const asText = typeof value === "string" ? value : "";
+  const parsed = Number.parseInt(asText, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const buildRefreshExpiryDate = () => {
+  const now = Date.now();
+  const refreshTtlDays = env.jwt.refreshTtlDays;
+  return new Date(now + refreshTtlDays * 24 * 60 * 60 * 1000);
+};
 
 export const redirectToGoogle = (req: Request, res: Response) => {
+  const tenantId = parseTenantId(req.query.tenant_id);
+  if (!tenantId) {
+    return res.status(400).send("tenant_id query param is required");
+  }
+
   const state = crypto.randomUUID();
 
-  // store state in a secure cookie for CSRF protection
+  // store state + tenant context in secure cookies for callback validation
   res.cookie("oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
     secure: env.app.nodeEnv === "production",
     maxAge: 1000 * 60 * 10, // 10 minutes
   });
-  const redirectUri = env.googleOauth.gooleredirecturl;
+  res.cookie("oauth_tenant_id", tenantId.toString(), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: env.app.nodeEnv === "production",
+    maxAge: 1000 * 60 * 10, // 10 minutes
+  });
+
+  const redirectUri = env.googleOauth.redirectUri;
 
   const params = new URLSearchParams({
-    client_id: env.googleOauth.googleclientid,
+    client_id: env.googleOauth.clientId,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: ["openid", "email", "profile"].join(" "),
@@ -39,7 +70,6 @@ export const redirectToGoogle = (req: Request, res: Response) => {
   });
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-
   return res.redirect(googleAuthUrl);
 };
 
@@ -47,25 +77,27 @@ export const googleCallback = async (req: Request, res: Response) => {
   const code = req.query.code as string | undefined;
   const state = req.query.state as string | undefined;
 
-
   if (!code) {
     return res.status(400).send("Authorization code is missing");
   }
 
-  // ✅ CSRF protection using state
+  // CSRF protection using state
   const storedState = req.cookies?.oauth_state;
   if (!state || !storedState || state !== storedState) {
     return res.status(401).send("Invalid OAuth state");
   }
   res.clearCookie("oauth_state");
 
+  const tenantId = parseTenantId(req.cookies?.oauth_tenant_id);
+  res.clearCookie("oauth_tenant_id");
+
   try {
     // 1. Exchange code for Google tokens
     const tokenData = await exchangeCodeForToken(
       code,
-      env.googleOauth.gooleredirecturl,
-      env.googleOauth.googleclientid,
-      env.googleOauth.gooleclientsecret
+      env.googleOauth.redirectUri,
+      env.googleOauth.clientId,
+      env.googleOauth.clientSecret
     );
 
     // 2. Fetch user info from Google
@@ -97,6 +129,15 @@ export const googleCallback = async (req: Request, res: Response) => {
           userInfo.email_verified
         );
       } else {
+        if (!tenantId) {
+          return res.status(400).send("tenant_id context is missing");
+        }
+
+        const role = await roleRepository.findByName("User", tenantId);
+        if (!role) {
+          return res.status(500).send("Default user role missing in database");
+        }
+
         const randomPassword = crypto.randomUUID();
         const passwordHash = await passwordUtils.hash(randomPassword);
 
@@ -105,14 +146,15 @@ export const googleCallback = async (req: Request, res: Response) => {
           email: parsed.email,
           googleId: parsed.googleId,
           isEmailVerified: userInfo.email_verified,
-          roleId: DEFAULT_USER_ROLE_ID,
+          roleId: role.id,
+          tenantId,
           passwordHash,
         });
       }
     }
 
     // 5. Block non-active users
-    if (user.status !== STATUS_ACTIVE_NAME) {
+    if (!isActiveUser(user)) {
       return res.status(403).send("User account is not active");
     }
 
@@ -120,11 +162,18 @@ export const googleCallback = async (req: Request, res: Response) => {
     const payload: JwtBasePayload = {
       sub: user.id,
       email: user.email,
-      role: user.role_name, // e.g. "admin", "user"
+      role: user.role_name ?? "User",
     };
 
     const accessToken = jwtUtils.signAccessToken(payload);
     const refreshToken = jwtUtils.signRefreshToken(payload);
+
+    await refreshTokenRepository.create(
+      user.id,
+      refreshToken,
+      user.tenant_id,
+      buildRefreshExpiryDate()
+    );
 
     // 7. Set tokens as HttpOnly cookies
     res.cookie("refreshToken", refreshToken, {
@@ -134,7 +183,7 @@ export const googleCallback = async (req: Request, res: Response) => {
       maxAge: 1000 * 60 * 60 * 24 * env.jwt.refreshTtlDays,
     });
 
-    // access cookie lifetime – here I'm just using 1h, you can tune it
+    // access cookie lifetime (1 hour)
     const accessTtlHours = 1;
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
