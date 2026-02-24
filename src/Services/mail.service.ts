@@ -8,19 +8,36 @@ export interface SendEmailOptions {
   text?: string;
 }
 
-// Create a single reusable transporter
-const transporter = nodemailer.createTransport({
-  host: env.mail.host,
-  port: env.mail.port,
-  secure: env.mail.port === 465, // true for 465, false for 587/25
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 20000,
-  auth: {
-    user: env.mail.user,
-    pass: env.mail.pass,
-  },
-});
+const isGmailHost = /gmail\.com$/i.test(env.mail.host.trim());
+
+const buildTransporter = (port: number) =>
+  nodemailer.createTransport({
+    host: env.mail.host.trim(),
+    port,
+    secure: port === 465, // true for 465, false for 587/25
+    requireTLS: port === 587,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+    tls: {
+      servername: env.mail.host.trim(),
+    },
+    auth: {
+      user: env.mail.user.trim(),
+      // Gmail app passwords are often copied with spaces (xxxx xxxx xxxx xxxx).
+      pass: isGmailHost
+        ? env.mail.pass.replace(/\s+/g, "")
+        : env.mail.pass,
+    },
+  });
+
+const primaryTransporter = buildTransporter(env.mail.port);
+
+const isConnectionTimeoutError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false;
+  const maybe = error as { code?: string; command?: string };
+  return maybe.code === "ETIMEDOUT" && maybe.command === "CONN";
+};
 
 export const mailService = {
   /**
@@ -32,13 +49,30 @@ export const mailService = {
     html,
     text,
   }: SendEmailOptions): Promise<void> {
-    await transporter.sendMail({
+    const message = {
       from: env.mail.from,
       to,
       subject,
       html,
       text,
-    });
+    };
+
+    try {
+      await primaryTransporter.sendMail(message);
+    } catch (error) {
+      const shouldFallbackTo465 =
+        isGmailHost &&
+        env.mail.port !== 465 &&
+        isConnectionTimeoutError(error);
+
+      if (shouldFallbackTo465) {
+        const fallbackTransporter = buildTransporter(465);
+        await fallbackTransporter.sendMail(message);
+        return;
+      }
+
+      throw error;
+    }
   },
 
   /**
