@@ -59,7 +59,11 @@ export const authController = {
       const refreshToken = req.cookies?.refreshToken;
 
       if (!refreshToken) {
-        return res.status(400).json({ message: "refreshToken is required" });
+        return res.status(401).json({
+          message: "refreshToken cookie is missing",
+          hint:
+            "Use credentials include/withCredentials on frontend requests, and verify cross-site cookies are allowed.",
+        });
       }
 
       const result = await authService.refreshTokens(refreshToken);
