@@ -36,6 +36,16 @@ const buildRefreshExpiryDate = () => {
   return new Date(now + refreshTtlDays * 24 * 60 * 60 * 1000);
 };
 
+const encodeOAuthUser = (payload: {
+  id: number;
+  email: string;
+  name?: string | null;
+  role?: string | null;
+  status?: string | null;
+  tenant_id?: number;
+}) =>
+  Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+
 export const redirectToGoogle = (req: Request, res: Response) => {
   const tenantId = parseTenantId(req.query.tenant_id);
   if (!tenantId) {
@@ -189,8 +199,22 @@ export const googleCallback = async (req: Request, res: Response) => {
       maxAge: 1000 * 60 * 60 * accessTtlHours,
     });
 
-    // 8. Redirect to frontend (no token in URL)
-    return res.redirect(`${env.app.frontendUrl}/auth/success`);
+    // 8. Redirect to frontend with token bootstrap in hash fragment.
+    const authUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name ?? null,
+      role: user.role_name ?? "User",
+      status: user.status_name ?? user.status_id ?? null,
+      tenant_id: user.tenant_id,
+    };
+    const hash = new URLSearchParams({
+      accessToken,
+      refreshToken,
+      user: encodeOAuthUser(authUser),
+    }).toString();
+
+    return res.redirect(`${env.app.frontendUrl}/auth/success#${hash}`);
   } catch (err) {
     console.error("Google OAuth Error:", err);
     return res.redirect(

@@ -18,7 +18,11 @@ export const authController = {
 
       return res
         .status(201)
-        .json({ user: result.user, accessToken: result.accessToken });
+        .json({
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
     } catch (err: any) {
       if (err.message === "EMAIL_EXISTS") {
         return res.status(409).json({ message: "Email already registered" });
@@ -40,7 +44,11 @@ export const authController = {
       setCookie(res, "refreshToken", result.refreshToken, 7 * 24); //7days
       return res
         .status(200)
-        .json({ user: result.user, accessToken: result.accessToken });
+        .json({
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
     } catch (err: any) {
       if (err.message === "INVALID") {
         return res.status(401).json({ message: "Invalid email or password" });
@@ -56,13 +64,17 @@ export const authController = {
 
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.refreshToken;
+      const refreshToken =
+        req.cookies?.refreshToken ||
+        (typeof req.body?.refreshToken === "string"
+          ? req.body.refreshToken
+          : undefined);
 
       if (!refreshToken) {
         return res.status(401).json({
-          message: "refreshToken cookie is missing",
+          message: "refreshToken is missing",
           hint:
-            "Use credentials include/withCredentials on frontend requests, and verify cross-site cookies are allowed.",
+            "Send refreshToken cookie or refreshToken in request body.",
         });
       }
 
@@ -71,7 +83,11 @@ export const authController = {
       setCookie(res, "refreshToken", result.refreshToken, 7 * 24);
       return res
         .status(200)
-        .json({ user: result.user, accessToken: result.accessToken });
+        .json({
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
     } catch (err: any) {
       if (err.message === "INVALID_REFRESH") {
         return res
