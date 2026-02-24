@@ -8,6 +8,7 @@ interface RoleRecord {
 }
 
 export const roleRepository = {
+  
   async findByName(name: string, tenantId?: number): Promise<RoleRecord | null> {
     if (tenantId !== undefined) {
       const [rows] = await db.query(
