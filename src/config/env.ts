@@ -11,13 +11,15 @@ const required = (value: string | undefined, name: string): string => {
   return value;
 };
 
+const normalizeOrigin = (value: string): string =>
+  value.trim().replace(/\/+$/, "");
+
 export const env = {
   app: {
     port: parseInt(process.env.PORT || "4000", 10),
     nodeEnv: process.env.NODE_ENV || "development",
-    frontendUrl: required(
-      process.env.APP_FRONTEND_URL,
-      "APP_FRONTEND_URL"
+    frontendUrl: normalizeOrigin(
+      required(process.env.APP_FRONTEND_URL, "APP_FRONTEND_URL")
     ),
   },
 

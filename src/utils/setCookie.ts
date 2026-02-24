@@ -1,5 +1,14 @@
 import { env } from "../config/env";
-import type { Response } from "express";
+import type { CookieOptions, Response } from "express";
+
+export const authCookieOptions = (): CookieOptions => {
+  const isProduction = env.app.nodeEnv === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+  };
+};
 
 export const setCookie = (
   res: Response,
@@ -8,9 +17,7 @@ export const setCookie = (
   hours: number
 ) => {
   res.cookie(cookieName, token, {
-    httpOnly: true,
-    secure: env.app.nodeEnv === "production",
-    sameSite: "strict",
-    maxAge: 1000 * 60 * 60 * hours, // hours → ms
+    ...authCookieOptions(),
+    maxAge: 1000 * 60 * 60 * hours, // hours -> ms.
   });
 };

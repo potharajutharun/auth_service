@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { authService } from "../Services/auth.service";
-import { setCookie } from "../utils/setCookie";
+import { authCookieOptions, setCookie } from "../utils/setCookie";
 // Shape of what we store in req.user (from JWT)
-import { env } from "../config/env";
 type JwtUser = {
   sub: number; // user id
   email?: string;
@@ -124,9 +123,7 @@ export const authController = {
       await authService.logout(refreshToken);
 
       res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: env.app.nodeEnv === "production",
-        sameSite: "strict",
+        ...authCookieOptions(),
       });
       return res.status(200).json({ message: "Logged out" });
     } catch (err) {
