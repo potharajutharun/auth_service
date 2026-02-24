@@ -8,7 +8,7 @@ import {
   resetPasswordSchema,
 } from "./auth.dto";
 import { authenticate } from "../../middleware/authenticate";
-import { authLimiter } from "../../middleware/rateLimiter";
+import { authLimiter, oauthLimiter } from "../../middleware/rateLimiter";
 
 import {
   redirectToGoogle,
@@ -47,7 +47,7 @@ router.post("/verify-email", authLimiter, authController.verifyEmail);
 router.get("/verify-email", authLimiter, authController.verifyEmail);
 router.get("/me", authenticate, authController.me);
 
-router.get("/google", authLimiter, redirectToGoogle);
-router.get("/google/callback", authLimiter, googleCallback);
+router.get("/google", oauthLimiter, redirectToGoogle);
+router.get("/google/callback", oauthLimiter, googleCallback);
 
 export default router;

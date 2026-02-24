@@ -156,7 +156,12 @@ export const authService = {
       email: user.email,
     });
 
-    await mailService.sendPasswordResetEmail(user.email, resetToken);
+    try {
+      await mailService.sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      // Keep response generic to avoid account enumeration behavior changes.
+      console.error("FAILED_TO_SEND_PASSWORD_RESET_EMAIL:", error);
+    }
   },
 
   async resetPassword({ token, newPassword }: ResetPasswordInput) {

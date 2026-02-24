@@ -13,6 +13,9 @@ const transporter = nodemailer.createTransport({
   host: env.mail.host,
   port: env.mail.port,
   secure: env.mail.port === 465, // true for 465, false for 587/25
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000,
   auth: {
     user: env.mail.user,
     pass: env.mail.pass,

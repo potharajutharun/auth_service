@@ -118,13 +118,15 @@ export const authController = {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken =
+        req.cookies?.refreshToken ||
+        (typeof req.body?.refreshToken === "string"
+          ? req.body.refreshToken
+          : undefined);
 
-      if (!refreshToken) {
-        return res.status(400).json({ message: "refreshToken is required" });
+      if (refreshToken) {
+        await authService.logout(refreshToken);
       }
-
-      await authService.logout(refreshToken);
 
       res.clearCookie("refreshToken", {
         ...authCookieOptions(),

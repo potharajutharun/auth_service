@@ -11,7 +11,9 @@ import cookieParser from "cookie-parser";
 export const createApp = () => {
   const app = express();
   const isBehindProxy =
-    env.app.nodeEnv === "production" || Boolean(process.env.RENDER);
+    env.app.nodeEnv === "production" ||
+    Boolean(process.env.RENDER) ||
+    Boolean(process.env.RENDER_EXTERNAL_URL);
 
   if (isBehindProxy) {
     // Required on Render/proxy setups so rate-limit uses the real client IP.

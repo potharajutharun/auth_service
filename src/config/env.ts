@@ -17,7 +17,9 @@ const normalizeUrl = (value: string): string =>
 export const env = {
   app: {
     port: parseInt(process.env.PORT || "4000", 10),
-    nodeEnv: process.env.NODE_ENV || "development",
+    nodeEnv:
+      process.env.NODE_ENV ||
+      (process.env.RENDER_EXTERNAL_URL ? "production" : "development"),
     frontendUrl: normalizeUrl(
       required(process.env.APP_FRONTEND_URL, "APP_FRONTEND_URL")
     ),
