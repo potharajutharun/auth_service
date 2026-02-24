@@ -11,14 +11,14 @@ const required = (value: string | undefined, name: string): string => {
   return value;
 };
 
-const normalizeOrigin = (value: string): string =>
+const normalizeUrl = (value: string): string =>
   value.trim().replace(/\/+$/, "");
 
 export const env = {
   app: {
     port: parseInt(process.env.PORT || "4000", 10),
     nodeEnv: process.env.NODE_ENV || "development",
-    frontendUrl: normalizeOrigin(
+    frontendUrl: normalizeUrl(
       required(process.env.APP_FRONTEND_URL, "APP_FRONTEND_URL")
     ),
   },
@@ -75,9 +75,11 @@ export const env = {
       process.env.OAUTH_GOOGLE_CLIENT_SECRET,
       "OAUTH_GOOGLE_CLIENT_SECRET"
     ),
-    redirectUri: required(
-      process.env.OAUTH_GOOGLE_REDIRECT_URI,
-      "OAUTH_GOOGLE_REDIRECT_URI"
+    redirectUri: normalizeUrl(
+      required(
+        process.env.OAUTH_GOOGLE_REDIRECT_URI,
+        "OAUTH_GOOGLE_REDIRECT_URI"
+      )
     ),
   },
 

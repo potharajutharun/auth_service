@@ -10,6 +10,7 @@ import { googleUserSchema } from "../domain/auth/auth.dto";
 import { userRepository } from "../repositories/user.repository";
 import { jwtUtils, JwtBasePayload } from "../utils/jwt";
 import { passwordUtils } from "../utils/password";
+import { authCookieOptions } from "../utils/setCookie";
 import { roleRepository } from "../repositories/role.repository";
 import { refreshTokenRepository } from "../repositories/refreshToken.repository";
 
@@ -177,18 +178,14 @@ export const googleCallback = async (req: Request, res: Response) => {
 
     // 7. Set tokens as HttpOnly cookies
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: env.app.nodeEnv === "production",
-      sameSite: "strict",
+      ...authCookieOptions(),
       maxAge: 1000 * 60 * 60 * 24 * env.jwt.refreshTtlDays,
     });
 
     // access cookie lifetime (1 hour)
     const accessTtlHours = 1;
     res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: env.app.nodeEnv === "production",
-      sameSite: "lax",
+      ...authCookieOptions(),
       maxAge: 1000 * 60 * 60 * accessTtlHours,
     });
 
